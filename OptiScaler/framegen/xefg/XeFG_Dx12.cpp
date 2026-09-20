@@ -19,8 +19,8 @@ using namespace DirectX;
 static int GameRequestedInterpolationCount()
 {
     // Games that create DLSS-G through raw NGX report the count directly
-    if (const int ngxCount = State::Instance().dlssgDetectedInterpolationCount; ngxCount > 0)
-        return ngxCount;
+    if (State::Instance().dlssgDetectedInterpolationCount > 0)
+        return State::Instance().dlssgDetectedInterpolationCount;
 
     // Games that go through Streamline report it via slDLSSGSetOptions instead
     return StreamlineHooks::GameRequestedInterpolationCount();

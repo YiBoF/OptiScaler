@@ -47,6 +47,12 @@ xefg_swapchain_result_t XeMFGHooks::hkxefgSwapChainD3D12GetProperties(
 xefg_swapchain_result_t XeMFGHooks::hkxefgSwapChainSetNumInterpolatedFrames(xefg_swapchain_handle_t hSwapChain,
                                                                             uint32_t numInterpolatedFrames)
 {
+    if (!Config::Instance()->FGXeFGInterpolationCount.has_value() || Config::Instance()->FGXeFGInterpolationCount == 0)
+    {
+        _currentInterpolationCount = numInterpolatedFrames;
+        return XeFGProxy::_xefgSwapChainSetNumInterpolatedFrames(hSwapChain, numInterpolatedFrames);
+    }
+
     if (_currentInterpolationCount != Config::Instance()->FGXeFGInterpolationCount.value_or_default())
     {
         _currentInterpolationCount = Config::Instance()->FGXeFGInterpolationCount.value_or_default();
@@ -57,11 +63,8 @@ xefg_swapchain_result_t XeMFGHooks::hkxefgSwapChainSetNumInterpolatedFrames(xefg
 
 xefg_swapchain_result_t XeMFGHooks::hkxefgSwapChainSetEnabled(xefg_swapchain_handle_t hSwapChain, uint32_t enable)
 {
-    if (enable > 0 && _currentInterpolationCount != Config::Instance()->FGXeFGInterpolationCount.value_or_default())
-    {
-        _currentInterpolationCount = Config::Instance()->FGXeFGInterpolationCount.value_or_default();
-        XeFGProxy::_xefgSwapChainSetNumInterpolatedFrames(hSwapChain, _currentInterpolationCount);
-    }
+    if (enable > 0)
+        hkxefgSwapChainSetNumInterpolatedFrames(hSwapChain, _currentInterpolationCount);
     return XeFGProxy::_xefgSwapChainSetEnabled(hSwapChain, enable);
 }
 

@@ -4047,16 +4047,19 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
 
             std::vector<std::string> intModes;
             intModes.reserve(maxInterpolationCount + 1);
-          
-            const int currentCount = (int) fgOutput->GetInterpolatedFrameCount();
-            int currentSet = currentCount;
-            if (currentCount > 0)
-                intModes.emplace_back(std::format("Auto {}X", currentCount + 1));
-            else
+
+            int currentCount = 1;
+            int currentSet = (int) fgOutput->GetInterpolatedFrameCount();
+            if (!Config::Instance()->FGXeFGInterpolationCount.has_value())
             {
-                intModes.emplace_back(std::string("Auto"));
+                if (State::Instance().dlssgDetectedInterpolationCount > 0)
+                    currentCount = State::Instance().dlssgDetectedInterpolationCount;
+                else
+                    currentCount = StreamlineHooks::GameRequestedInterpolationCount();
                 currentSet = 0;
             }
+
+            intModes.emplace_back(std::format("Auto {}X", currentCount + 1));
             for (uint32_t i = 2; i < maxInterpolationCount + 2; i++)
                 intModes.emplace_back(std::format("{}X", i));
 
@@ -4064,7 +4067,7 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
 
             if (ImGui::BeginCombo("MFG", intModes[currentSet].c_str()))
             {
-                for (int i = 0; i < maxInterpolationCount; i++)
+                for (int i = 0; i < maxInterpolationCount + 1; i++)
                 {
                     if (ImGui::Selectable(intModes[i].c_str(), (currentSet == i)))
                     {
@@ -4222,22 +4225,30 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
         uint32_t maxInterpolationCount = XeMFGHooks::GetMaxInterpolationCount();
 
         std::vector<std::string> intModes;
-        intModes.reserve(maxInterpolationCount);
+        intModes.reserve(maxInterpolationCount + 1);
+
+        const int currentSet = Config::Instance()->FGXeFGInterpolationCount.value_or(0);
+        const int currentCount = XeMFGHooks::GetCurrentInterpolationCount();
+
+        intModes.emplace_back(std::format("Auto {}X", currentCount + 1));
         for (uint32_t i = 2; i < maxInterpolationCount + 2; i++)
             intModes.emplace_back(std::format("{}X", i));
-
-        const int currentSet = Config::Instance()->FGXeFGInterpolationCount.value_or_default() - 1;
 
         ImGui::PushItemWidth(95.0f * menuResScale);
 
         if (ImGui::BeginCombo("MFG", intModes[currentSet].c_str()))
         {
-            for (int i = 0; i < maxInterpolationCount; i++)
+            for (int i = 0; i < maxInterpolationCount + 1; i++)
             {
                 if (ImGui::Selectable(intModes[i].c_str(), (currentSet == i)))
                 {
-                    LOG_DEBUG("XeFG Interpolation Count set to: {}", i + 1);
-                    config->FGXeFGInterpolationCount = i + 1;
+                    if (i == 0)
+                    {
+                        config->FGXeFGInterpolationCount = std::nullopt;
+                        break;
+                    }
+                    LOG_DEBUG("XeFG Interpolation Count set to: {}", i);
+                    config->FGXeFGInterpolationCount = i;
                 }
             }
             ImGui::EndCombo();
