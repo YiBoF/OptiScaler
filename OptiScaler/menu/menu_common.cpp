@@ -4048,16 +4048,15 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
             std::vector<std::string> intModes;
             intModes.reserve(maxInterpolationCount + 1);
 
-            int currentCount = 1;
+            int currentCount = 0;
+            if (State::Instance().dlssgDetectedInterpolationCount > 0)
+                currentCount = State::Instance().dlssgDetectedInterpolationCount;
+            else
+                currentCount = StreamlineHooks::GameRequestedInterpolationCount();
+
             int currentSet = (int) fgOutput->GetInterpolatedFrameCount();
             if (!Config::Instance()->FGXeFGInterpolationCount.has_value())
-            {
-                if (State::Instance().dlssgDetectedInterpolationCount > 0)
-                    currentCount = State::Instance().dlssgDetectedInterpolationCount;
-                else
-                    currentCount = StreamlineHooks::GameRequestedInterpolationCount();
                 currentSet = 0;
-            }
 
             intModes.emplace_back(std::format("Auto {}X", currentCount + 1));
             for (uint32_t i = 2; i < maxInterpolationCount + 2; i++)
