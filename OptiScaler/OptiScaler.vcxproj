@@ -231,7 +231,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalOptions>/w34996 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/w34996 /utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -333,6 +333,7 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClInclude Include="hooks\Hook_Utils.h" />
     <ClInclude Include="hooks\LibraryLoad_Hooks.h" />
     <ClInclude Include="hooks\CommandBuffer_StateTracker.h" />
+    <ClInclude Include="hooks\XeMFG_Hooks.h" />
     <ClInclude Include="framegen\nvngx\IFGNvngx.h" />
     <ClInclude Include="shaders\hud_copy\HudCopy_Vk.h" />
     <ClInclude Include="inputs\FG\Streamline_Inputs_Sl1_Dx12.h" />
@@ -484,7 +485,11 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClInclude Include="proxies\Kernel32_Proxy.h" />
     <ClInclude Include="proxies\KernelBase_Proxy.h" />
     <ClInclude Include="proxies\XeFG_Proxy.h" />
+    <ClInclude Include="proxies\XeFGUnlock.h" />
+    <ClInclude Include="proxies\XeFGPacing.h" />
     <ClInclude Include="proxies\XeLL_Proxy.h" />
+    <ClInclude Include="proxies\UnlockBase.h" />
+    <ClInclude Include="proxies\XeLLUnLock.h" />
     <ClInclude Include="proxies\Ntdll_Proxy.h" />
     <ClInclude Include="resource_tracking\ResTrack_dx11.h" />
     <ClInclude Include="resource_tracking\ResTrack_dx12.h" />
@@ -623,6 +628,7 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClCompile Include="hooks\Kernel_Hooks.cpp" />
     <ClCompile Include="hooks\LibraryLoad_Hooks.cpp" />
     <ClCompile Include="hooks\VulkanwDx12_Hooks.cpp" />
+    <ClCompile Include="hooks\XeMFG_Hooks.cpp" />
     <ClCompile Include="hooks\Xell_Hooks.cpp" />
     <ClCompile Include="shaders\hud_copy\HudCopy_Vk.cpp" />
     <ClCompile Include="inputs\FG\Streamline_Inputs_Sl1_Dx12.cpp" />

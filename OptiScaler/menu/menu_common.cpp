@@ -35,6 +35,7 @@
 #include <misc/IdentifyGpu.h>
 #include <hooks/Xell_Hooks.h>
 #include <low_latency/input/input_common.h>
+#include <hooks/XeMFG_Hooks.h>
 
 enum class UiTargetMode
 {
@@ -2231,6 +2232,37 @@ void MenuCommon::RenderPerformanceOverlay(RenderMenuContext& ctx)
                     drawTiming(TimingType::OsRenderQueue, "RenderQueue", ImVec4(0.76f, 0.51f, 0.188f, 1.0f));
                     drawTiming(TimingType::GpuRender, "GpuRender", ImVec4(0.569f, 0.117f, 0.705f, 1.0f));
                 }
+                else if (auto xellData = XeMFGHooks::GetLatencyReports(3); xellData.m_frame_id > 0)
+                {
+                    ImDrawList* drawList = ImGui::GetWindowDrawList();
+                    constexpr float offsetForText = 155;
+                    const auto maxWidth =
+                        config->FpsOverlayHorizontal.value_or_default() ? ImGui::GetWindowWidth() : plotSize.x;
+
+                    float total = xellData.m_present_end_ts - xellData.m_sim_start_ts;
+                    ImGui::Text("XeLL timings, whole frame: %.1fms", total / 1e6);
+                    const auto drawTiming = [&](UINT64 startTime, UINT64 endTime, const char* desc, ImVec4 color)
+                    {
+                        auto toneMappedColor = toneMapColor(color);
+                        float usedTime = endTime - startTime;
+                        float position = (startTime - xellData.m_sim_start_ts) / total;
+                        ImGui::TextColored(toneMappedColor, "%-12s %4.1fms", desc, usedTime / 1e6);
+                        auto leftLimit = ImGui::GetItemRectMin().x + offsetForText * fpsScale;
+                        auto start = static_cast<float>(leftLimit +
+                                                        (ImGui::GetItemRectMin().x + maxWidth - leftLimit) * position);
+                        auto end = static_cast<float>(start + (ImGui::GetItemRectMin().x + maxWidth - leftLimit) *
+                                                                  usedTime / total);
+                        auto pos = ImVec2(start, ImGui::GetItemRectMin().y);
+                        auto size = ImVec2(end, ImGui::GetItemRectMax().y);
+                        drawList->AddRectFilled(pos, size, ImGui::ColorConvertFloat4ToU32(toneMappedColor));
+                    };
+                    drawTiming(xellData.m_sim_start_ts, xellData.m_sim_end_ts, "Simulation",
+                               ImVec4(0.768f, 0.169f, 0.169f, 1.0f));
+                    drawTiming(xellData.m_render_submit_start_ts, xellData.m_render_submit_end_ts, "RenderSubmit",
+                               ImVec4(0.235f, 0.705f, 0.294f, 1.0f));
+                    drawTiming(xellData.m_present_start_ts, xellData.m_present_end_ts, "Present",
+                               ImVec4(1.0f, 0.88f, 0.098f, 1.0f));
+                }
 #endif
             }
         }
@@ -3395,6 +3427,8 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
 
             if (maxInterpolationCount >= 1)
             {
+                const char* intModes[] = { "Default", "Off", "2X", "3X", "4X", "5X", "6X" };
+
                 // Map config value to UI index
                 int currentSet = 0;
                 if (config->FGDLSSGOverrideInterpolationCount.has_value())
@@ -3402,29 +3436,15 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
                     currentSet = config->FGDLSSGOverrideInterpolationCount.value() + 1;
                 }
 
-                std::string currentIntCountStr;
-                if (currentSet == 0)
-                    currentIntCountStr = "Default";
-                else if (currentSet == 1)
-                    currentIntCountStr = "Off";
-                else
-                    currentIntCountStr = std::to_string(currentSet) + "X";
+                const char* currentIntCount = intModes[currentSet];
 
                 ImGui::PushItemWidth(95.0f * menuResScale);
 
-                if (ImGui::BeginCombo("Override DLSSG Ratio", currentIntCountStr.c_str()))
+                if (ImGui::BeginCombo("Override DLSSG Ratio", currentIntCount))
                 {
                     for (int i = 0; i <= maxInterpolationCount + 1; i++)
                     {
-                        std::string modeStr;
-                        if (i == 0)
-                            modeStr = "Default";
-                        else if (i == 1)
-                            modeStr = "Off";
-                        else
-                            modeStr = std::to_string(i) + "X";
-
-                        if (ImGui::Selectable(modeStr.c_str(), (currentSet == i)))
+                        if (ImGui::Selectable(intModes[i], (currentSet == i)))
                         {
                             if (i == 0)
                             {
@@ -4030,32 +4050,66 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
         {
             ImGui::SameLine(0.0f, 16.0f);
 
-            auto currentSet = fgOutput->GetInterpolatedFrameCount() - 1;
+            std::vector<std::string> intModes;
+            intModes.reserve(maxInterpolationCount + 1);
 
-            std::string currentIntCountStr = std::to_string(currentSet + 2) + "X";
+            int currentCount = 0;
+            if (State::Instance().dlssgDetectedInterpolationCount > 0)
+                currentCount = State::Instance().dlssgDetectedInterpolationCount;
+            else
+                currentCount = StreamlineHooks::GameRequestedInterpolationCount();
+
+            int currentSet = (int) fgOutput->GetInterpolatedFrameCount();
+            if (!Config::Instance()->FGXeFGInterpolationCount.has_value())
+                currentSet = 0;
+
+            intModes.emplace_back(std::format("Auto {}X", currentCount + 1));
+            for (uint32_t i = 2; i < maxInterpolationCount + 2; i++)
+                intModes.emplace_back(std::format("{}X", i));
 
             ImGui::PushItemWidth(95.0f * menuResScale);
 
-            if (ImGui::BeginCombo("MFG", currentIntCountStr.c_str()))
+            if (ImGui::BeginCombo("MFG", intModes[currentSet].c_str()))
             {
-                for (int i = 0; i < maxInterpolationCount; i++)
+                for (int i = 0; i < maxInterpolationCount + 1; i++)
                 {
-                    std::string modeStr = std::to_string(i + 2) + "X";
-
-                    if (ImGui::Selectable(modeStr.c_str(), (currentSet == i)))
+                    if (ImGui::Selectable(intModes[i].c_str(), (currentSet == i)))
                     {
-                        LOG_DEBUG("XeFG Interpolation Count set to: {}", i + 1);
+                        if (i == 0)
+                        {
+                            config->FGXeFGInterpolationCount = std::nullopt;
+                            break;
+                        }
+                        LOG_DEBUG("XeFG Interpolation Count set to: {}", i);
                         state.fgChanged = true;
-                        config->FGXeFGInterpolationCount = i + 1;
+                        config->FGXeFGInterpolationCount = i;
                     }
                 }
-
                 ImGui::EndCombo();
             }
 
             ImGui::PopItemWidth();
+            if (config->FGXeFGInterpolationCount.value_or_default() > 3)
+            {
+                ImGui::SameLine(0.0f, 16.0f);
+                ImGui::TextColored(toneMapColor(ImVec4(1.f, 0.8f, 0.f, 1.f)), "! Enable VSync");
+            }
+            // The upper bound is spelled out from the live value rather than as a
+            // fixed number, so narrowing XeFG\MaxInterpolatedFrames does not leave
+            // the tooltip promising a multiplier the slot will refuse.
+            char mfgTip[512];
+            std::snprintf(mfgTip, sizeof(mfgTip),
+                          "Set XeFG interpolation count\n\n"
+                          "Auto (the default) follows the multiplier of the game's own\n"
+                          "frame generation setting, and is what an unset value means.\n\n"
+                          "2X-4X work on their own.\n\n"
+                          "Above 4X the generated frames are presented faster than\n"
+                          "the display refreshes, so VSync (or a frame rate cap) is\n"
+                          "required - without it the extra frames tear and judder.\n\n"
+                          "Use Custom... for anything above 4X, up to %dX.",
+                          maxInterpolationCount + 1);
 
-            ShowHelpMarker("Set XeFG interpolation count");
+            ShowHelpMarker(mfgTip);
         }
 
         ImGui::SameLine(0.0f, 16.0f);
@@ -4069,6 +4123,18 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
                        "Fixes artifacting transparent HUD/UI");
         ImGui::EndDisabled();
 
+        // Takes effect once, at XeFG init: the pacing hook rewrites the present
+        // thunk, so this cannot be toggled while the game is running.
+        bool fgExtraPacing = config->FGXeFGExtraPacing.value_or_default();
+        if (ImGui::Checkbox("Extra Pacing", &fgExtraPacing))
+            config->FGXeFGExtraPacing = fgExtraPacing;
+
+        ShowHelpMarker("Pace every generated frame above 2X\n\n"
+                       "Without it the provider hands the whole burst of generated\n"
+                       "frames over at once and only spaces out the last one, which\n"
+                       "reads as judder at 4X and above\n\n"
+                       "NEEDS GAME RESTART TO BE ACTIVE!");
+
         bool fgDV = config->FGXeFGDebugView.value_or_default();
         if (ImGui::Checkbox("Debug View##2", &fgDV))
         {
@@ -4081,6 +4147,10 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
             }
         }
         ShowHelpMarker("Enable XeFG Debug view");
+
+        ImGui::SameLine(0.0f, 16.0f);
+        ImGui::Checkbox("Only Generated Frame", &state.fgOnlyGenerated);
+        ShowHelpMarker("Enable XeFG Debug Feature Show Only Interpolation");
 
         ImGui::EndDisabled();
 
@@ -4149,6 +4219,48 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
             ImGui::Spacing();
         }
     }
+    // WIP
+    // Select the number of interpolation frames in native XEFG input
+    else if (XeMFGHooks::GetxefgContext() && XeMFGHooks::GetMaxInterpolationCount() > 1)
+    {
+
+        ImGui::SeparatorText("Frame Generation (XeFG - Native)");
+
+        uint32_t maxInterpolationCount = XeMFGHooks::GetMaxInterpolationCount();
+
+        std::vector<std::string> intModes;
+        intModes.reserve(maxInterpolationCount + 1);
+
+        const int currentSet = Config::Instance()->FGXeFGInterpolationCount.value_or(0);
+        const int currentCount = XeMFGHooks::GetGameInterpolationCount();
+
+        intModes.emplace_back(std::format("Auto {}X", currentCount + 1));
+        for (uint32_t i = 2; i < maxInterpolationCount + 2; i++)
+            intModes.emplace_back(std::format("{}X", i));
+
+        ImGui::PushItemWidth(95.0f * menuResScale);
+
+        if (ImGui::BeginCombo("MFG", intModes[currentSet].c_str()))
+        {
+            for (int i = 0; i < maxInterpolationCount + 1; i++)
+            {
+                if (ImGui::Selectable(intModes[i].c_str(), (currentSet == i)))
+                {
+                    if (i == 0)
+                    {
+                        config->FGXeFGInterpolationCount = std::nullopt;
+                        break;
+                    }
+                    LOG_DEBUG("XeFG Interpolation Count set to: {}", i);
+                    config->FGXeFGInterpolationCount = i;
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        ImGui::PopItemWidth();
+        ImGui::TextColored(toneMapColor(ImVec4(1.f, 0.8f, 0.f, 1.f)), "apply need restart game FG");
+    }
 
     // DLSSG controls
     if (state.activeFgOutput == FGOutput::DLSSG && state.activeFgInput != FGInput::NoFG &&
@@ -4196,19 +4308,17 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
 
             ImGui::BeginDisabled(config->FGDLSSGForceDMFG.value_or_default());
 
+            const char* intModes[] = { "2X", "3X", "4X", "5X", "6X" };
             auto currentSet = fgOutput->GetInterpolatedFrameCount() - 1;
-
-            std::string currentIntCountStr = std::to_string(currentSet + 2) + "X";
+            auto currentIntCount = intModes[currentSet];
 
             ImGui::PushItemWidth(95.0f * menuResScale);
 
-            if (ImGui::BeginCombo("MFG", currentIntCountStr.c_str()))
+            if (ImGui::BeginCombo("MFG", currentIntCount))
             {
                 for (int i = 0; i < maxInterpolationCount; i++)
                 {
-                    std::string modeStr = std::to_string(i + 2) + "X";
-
-                    if (ImGui::Selectable(modeStr.c_str(), (currentSet == i)))
+                    if (ImGui::Selectable(intModes[i], (currentSet == i)))
                     {
                         LOG_DEBUG("DLSSG Interpolation Count set to: {}", i + 1);
                         config->FGDLSSGInterpolationCount = i + 1;
@@ -5084,7 +5194,7 @@ void MenuCommon::RenderFramerateSettings(RenderMenuContext& ctx)
         }
         else
         {
-            if (XellHooks::canLimit())
+            if (XellHooks::canLimit() || XeMFGHooks::GetxellContext())
                 currentMethod = "Game's XeLL";
             else
                 currentMethod = "Fallback";

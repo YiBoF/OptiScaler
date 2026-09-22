@@ -7,6 +7,7 @@
 
 #include <proxies/Ntdll_Proxy.h>
 #include <proxies/KernelBase_Proxy.h>
+#include <proxies/XeLLUnLock.h>
 #include <hooks/Xell_Hooks.h>
 
 #include <xell.h>
@@ -76,6 +77,8 @@ static void RedirectAllExports(HMODULE hOld, HMODULE hNew)
 class XeLLProxy
 {
   private:
+    friend class XeMFGHooks;
+
     inline static HMODULE _dll = nullptr;
     inline static HMODULE _memoryDll = nullptr;
     inline static std::wstring _dllPath;
@@ -255,6 +258,11 @@ class XeLLProxy
             return false;
 
         _dll = libxellModule;
+
+        // Same reasoning as the libxess_fg side: the provider's own argument
+        // validation is what caps the generated frame count, so it is patched on
+        // the mapped image rather than worked around at the call site.
+        XeLLUnlock::Apply(_dll);
 
         {
             ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};

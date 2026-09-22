@@ -7,6 +7,7 @@
 #include <nvapi/fakenvapi.h>
 #include <hooks/Reflex_Hooks.h>
 #include <hooks/D3D12_Hooks.h>
+#include <hooks/XeMFG_Hooks.h>
 #include <with_dx12/dx11_with_dx12_sync.h>
 
 #include <menu/menu_overlay_dx.h>
@@ -372,6 +373,7 @@ static HRESULT LocalPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
         ReflexHooks::update(false, false);
 
     XellHooks::update();
+    XeMFGHooks::Update();
 
     // Upscaler GPU time computation
     if (willPresent && (fg == nullptr || !fg->IsActive() || fg->IsPaused()))
@@ -797,7 +799,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDXGISwapChain4::Present(UINT SyncInterval, UIN
 
         // When Reflex can't be used to limit, sleep in present
         if (!State::Instance().reflexLimitsFps && State::Instance().activeFgOutput == FGOutput::NoFG &&
-            !IdentifyGpu::getPrimaryGpu().usesDxvk && !XellHooks::canLimit())
+            !IdentifyGpu::getPrimaryGpu().usesDxvk && !XellHooks::canLimit() && !XeMFGHooks::GetxellContext())
             FrameLimit::sleep(false);
     }
     else
@@ -1155,7 +1157,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDXGISwapChain4::Present1(UINT SyncInterval, UI
 
         // When Reflex can't be used to limit, sleep in present
         if (!State::Instance().reflexLimitsFps && State::Instance().activeFgOutput == FGOutput::NoFG &&
-            !IdentifyGpu::getPrimaryGpu().usesDxvk && !XellHooks::canLimit())
+            !IdentifyGpu::getPrimaryGpu().usesDxvk && !XellHooks::canLimit() && !XeMFGHooks::GetxellContext())
             FrameLimit::sleep(false);
     }
     else
