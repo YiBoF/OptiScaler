@@ -4227,7 +4227,7 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
         intModes.reserve(maxInterpolationCount + 1);
 
         const int currentSet = Config::Instance()->FGXeFGInterpolationCount.value_or(0);
-        const int currentCount = XeMFGHooks::GetCurrentInterpolationCount();
+        const int currentCount = XeMFGHooks::GetGameInterpolationCount();
 
         intModes.emplace_back(std::format("Auto {}X", currentCount + 1));
         for (uint32_t i = 2; i < maxInterpolationCount + 2; i++)

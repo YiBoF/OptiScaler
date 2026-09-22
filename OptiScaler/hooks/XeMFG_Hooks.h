@@ -9,6 +9,7 @@ class XeMFGHooks
     inline static bool _hookedLL = false;
     inline static int _maxInterpolationCount = 1;
     inline static int _currentInterpolationCount = 1;
+    inline static int _gameInterpolationCount = 1;
     inline static float _lastFraneLimit = 0.f;
 
     inline static xefg_swapchain_handle_t _xefgContext = nullptr;
@@ -37,6 +38,7 @@ class XeMFGHooks
 
   public:
     inline static int GetCurrentInterpolationCount() { return _currentInterpolationCount; }
+    inline static int GetGameInterpolationCount() { return _gameInterpolationCount; }
 
     static bool Hooks();
     static bool HooksXeFG();

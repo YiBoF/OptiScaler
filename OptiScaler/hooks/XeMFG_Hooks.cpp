@@ -47,12 +47,12 @@ xefg_swapchain_result_t XeMFGHooks::hkxefgSwapChainD3D12GetProperties(
 xefg_swapchain_result_t XeMFGHooks::hkxefgSwapChainSetNumInterpolatedFrames(xefg_swapchain_handle_t hSwapChain,
                                                                             uint32_t numInterpolatedFrames)
 {
+    _gameInterpolationCount = numInterpolatedFrames;
     if (!Config::Instance()->FGXeFGInterpolationCount.has_value() || Config::Instance()->FGXeFGInterpolationCount == 0)
     {
         _currentInterpolationCount = numInterpolatedFrames;
         return XeFGProxy::_xefgSwapChainSetNumInterpolatedFrames(hSwapChain, numInterpolatedFrames);
     }
-
     if (_currentInterpolationCount != Config::Instance()->FGXeFGInterpolationCount.value_or_default())
     {
         _currentInterpolationCount = Config::Instance()->FGXeFGInterpolationCount.value_or_default();
@@ -167,12 +167,11 @@ xell_frame_report_t XeMFGHooks::GetLatencyReports(const float frequency)
     static auto lastCallTime = std::chrono::steady_clock::time_point {};
 
     auto now = std::chrono::steady_clock::now();
-    auto interval = std::chrono::milliseconds(static_cast<long long>(1000.0f / frequency));
+    auto interval = std::chrono::microseconds(static_cast<long long>(1000000.0f / frequency));
     if (now - lastCallTime < interval)
     {
         return _xellLatencyData;
     }
-
     lastCallTime = now;
 
     XeLLProxy::GetFramesReports()(_xellContext, _xellReport);
