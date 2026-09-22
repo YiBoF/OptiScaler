@@ -961,28 +961,6 @@ bool XeFG_Dx12::Dispatch()
     else
         constData.resetHistory = false;
 
-    // xefg_swapchain.h documents frameRenderTime as "time that was required to
-    // render current frame in milliseconds", and the provider drives its generated
-    // frame pacing with it.
-    //
-    // The value that should never be used for it is state.lastFGFrameTime, the
-    // present to present delta (see FG_Hooks.cpp). It brackets the whole of the
-    // previous present, the pacing included, so above 2X - where the provider
-    // really does space the generated frames - it is self-referential: the frames
-    // are asked to fill a period that only exists because they were asked to fill
-    // it, and the real frame period settles at renderTime * (count + 1) rather
-    // than coming down towards the time the game actually spends rendering. That
-    // is where the input latency came from. XeFGPacing measures its own blocking,
-    // so it can hand over the period with that taken back out.
-    //
-    // _ftDelta used to be tried first, on the understanding that nothing fills it
-    // on this backend. Something does: Upscaler_Inputs_Dx12.cpp sets it to
-    // State::Instance().lastFGFrameTime, so it is not a second source at all -
-    // it is the same self-referential number under another name. Tried first, it
-    // always won, RenderTimeMs() was never reached, and the report showed it:
-    // `fed` came out equal to `real frame` on every line while `render-est` sat
-    // far below both. Asking the pacing first is the whole fix; _ftDelta stays as
-    // the fallback for any path that fills it with something else.
     auto frameRenderTime = XeFGPacing::RenderTimeMs();
 
     if (!(frameRenderTime > 0.0))
