@@ -16,9 +16,6 @@
 
 using namespace DirectX;
 
-// Interpolation count requested by the game's own frame generation setting, in XeFG's unit
-// (interpolation count == multiplier - 1, the same convention as DLSSG.MultiFrameCount and
-// sl::DLSSGOptions::numFramesToGenerate). Returns 0 when the game has not requested FG at all.
 static int GameRequestedInterpolationCount()
 {
     // Games that create DLSS-G through raw NGX report the count directly

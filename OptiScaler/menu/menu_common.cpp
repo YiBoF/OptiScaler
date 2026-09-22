@@ -4094,22 +4094,7 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
                 ImGui::SameLine(0.0f, 16.0f);
                 ImGui::TextColored(toneMapColor(ImVec4(1.f, 0.8f, 0.f, 1.f)), "! Enable VSync");
             }
-            // The upper bound is spelled out from the live value rather than as a
-            // fixed number, so narrowing XeFG\MaxInterpolatedFrames does not leave
-            // the tooltip promising a multiplier the slot will refuse.
-            char mfgTip[512];
-            std::snprintf(mfgTip, sizeof(mfgTip),
-                          "Set XeFG interpolation count\n\n"
-                          "Auto (the default) follows the multiplier of the game's own\n"
-                          "frame generation setting, and is what an unset value means.\n\n"
-                          "2X-4X work on their own.\n\n"
-                          "Above 4X the generated frames are presented faster than\n"
-                          "the display refreshes, so VSync (or a frame rate cap) is\n"
-                          "required - without it the extra frames tear and judder.\n\n"
-                          "Use Custom... for anything above 4X, up to %dX.",
-                          maxInterpolationCount + 1);
-
-            ShowHelpMarker(mfgTip);
+            ShowHelpMarker("Set XeFG interpolation count");
         }
 
         ImGui::SameLine(0.0f, 16.0f);

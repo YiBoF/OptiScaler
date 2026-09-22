@@ -214,18 +214,13 @@ bool Config::Reload(std::filesystem::path iniPath)
 
         {
             FGXeFGInterpolationCount.set_from_config(readInt("XeFG", "InterpolationCount"));
-            // Anything in range here survives a reload; out of range is reset to
-            // the default rather than clamped, so an over-large value would look
-            // like the setting silently reverting to 2X.
-            if (FGXeFGInterpolationCount.has_value() &&
-                (FGXeFGInterpolationCount.value() < 1 || FGXeFGInterpolationCount.value() > XeFGMaxInterpolations))
+
+            if (FGXeFGInterpolationCount.has_value() && FGXeFGInterpolationCount.value() < 1)
                 FGXeFGInterpolationCount.reset();
 
             FGXeFGUnlockEnabled.set_from_config(readBool("XeFG", "UnlockMFG"));
             FGXeFGMaxInterpolatedFrames.set_from_config(readInt("XeFG", "MaxInterpolatedFrames"));
-            if (FGXeFGMaxInterpolatedFrames.has_value() &&
-                (FGXeFGMaxInterpolatedFrames.value() < 1 ||
-                 FGXeFGMaxInterpolatedFrames.value() > XeFGMaxInterpolations))
+            if (FGXeFGMaxInterpolatedFrames.has_value() && FGXeFGMaxInterpolatedFrames.value() < 1)
                 FGXeFGMaxInterpolatedFrames.reset();
 
             FGXeFGExtraPacing.set_from_config(readBool("XeFG", "ExtraPacing"));
