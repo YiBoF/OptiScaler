@@ -617,8 +617,13 @@ class Config
     CustomOptional<bool> FSRFGEnableWatermark { false };
 
     // XeFG
+    static constexpr int32_t XeFGMaxInterpolations = 7;
+
     CustomOptional<bool> FGXeFGIgnoreInitChecks { false };
     CustomOptional<int> FGXeFGInterpolationCount { 1 };
+    CustomOptional<bool> FGXeFGUnlockEnabled { true };
+    CustomOptional<int> FGXeFGMaxInterpolatedFrames { XeFGMaxInterpolations };
+    CustomOptional<bool> FGXeFGExtraPacing { true };
     CustomOptional<bool> FGXeFGUIComposition { false };
     CustomOptional<bool> FGXeFGDepthInverted { true };
     CustomOptional<bool> FGXeFGJitteredMV { false };

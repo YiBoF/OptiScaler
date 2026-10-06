@@ -184,6 +184,13 @@ bool Config::Reload(std::filesystem::path iniPath)
             if (FGXeFGInterpolationCount.has_value() && FGXeFGInterpolationCount.value() < 1)
                 FGXeFGInterpolationCount.reset();
 
+            FGXeFGUnlockEnabled.set_from_config(readBool("XeFG", "UnlockMFG"));
+            FGXeFGMaxInterpolatedFrames.set_from_config(readInt("XeFG", "MaxInterpolatedFrames"));
+            if (FGXeFGMaxInterpolatedFrames.has_value() && FGXeFGMaxInterpolatedFrames.value() < 1)
+                FGXeFGMaxInterpolatedFrames.reset();
+
+            FGXeFGExtraPacing.set_from_config(readBool("XeFG", "ExtraPacing"));
+
             FGXeFGIgnoreInitChecks.set_from_config(readBool("XeFG", "IgnoreInitChecks"));
             FGXeFGUIComposition.set_from_config(readBool("XeFG", "UIComposition"));
             FGXeFGDepthInverted.set_from_config(readBool("XeFG", "DepthInverted"));
@@ -956,6 +963,10 @@ bool Config::SaveIni()
     {
         ini.SetValue("XeFG", "InterpolationCount",
                      GetIntValue(Instance()->FGXeFGInterpolationCount.value_for_config()).c_str());
+        ini.SetValue("XeFG", "UnlockMFG", GetBoolValue(Instance()->FGXeFGUnlockEnabled.value_for_config()).c_str());
+        ini.SetValue("XeFG", "MaxInterpolatedFrames",
+                     GetIntValue(Instance()->FGXeFGMaxInterpolatedFrames.value_for_config()).c_str());
+        ini.SetValue("XeFG", "ExtraPacing", GetBoolValue(Instance()->FGXeFGExtraPacing.value_for_config()).c_str());
         ini.SetValue("XeFG", "IgnoreInitChecks",
                      GetBoolValue(Instance()->FGXeFGIgnoreInitChecks.value_for_config()).c_str());
         ini.SetValue("XeFG", "UIComposition", GetBoolValue(Instance()->FGXeFGUIComposition.value_for_config()).c_str());

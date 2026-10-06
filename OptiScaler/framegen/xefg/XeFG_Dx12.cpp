@@ -796,8 +796,13 @@ bool XeFG_Dx12::Dispatch()
 
     XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_TAG_INTERPOLATED_FRAMES,
                                     Config::Instance()->FGXeFGDebugView.value_or_default(), nullptr);
-    XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_SHOW_ONLY_INTERPOLATION,
-                                    state.fgOnlyGenerated, nullptr);
+    static bool lastOnlyFG = false;
+    if (lastOnlyFG != state.fgOnlyGenerated)
+    {
+        lastOnlyFG = state.fgOnlyGenerated;
+        XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_SHOW_ONLY_INTERPOLATION,
+                                        lastOnlyFG, nullptr);
+    }
 
     xefg_swapchain_frame_constant_data_t constData = {};
 
@@ -856,10 +861,18 @@ bool XeFG_Dx12::Dispatch()
     else
         constData.resetHistory = false;
 
+    auto frameRenderTime = XeFGPacing::RenderTimeMs();
+
+    if (!(frameRenderTime > 0.0))
+        frameRenderTime = _ftDelta[fIndex];
+
+    if (!(frameRenderTime > 0.0))
+        frameRenderTime = state.lastFGFrameTime;
+
     switch (Config::Instance()->FTInput.value_or_default())
     {
     case FrameTimeSource::Input:
-        constData.frameRenderTime = (float) _ftDelta[fIndex];
+        constData.frameRenderTime = static_cast<float>(frameRenderTime);
         break;
 
     case FrameTimeSource::Opti:
@@ -871,8 +884,12 @@ bool XeFG_Dx12::Dispatch()
         break;
     }
 
-    LOG_DEBUG("Reset: {}, Opti FT: {}, Source FT: {}, Set FT: {}, Opti Id: {}, Reflex Id: {}", _reset[fIndex],
-              constData.frameRenderTime, _ftDelta[fIndex], constData.frameRenderTime, _frameCount,
+    // Report what the provider actually got, next to the period it came out of.
+    // The two numbers together are what says whether the loop above is real.
+    XeFGPacing::NoteFedFrameTime(constData.frameRenderTime);
+
+    LOG_DEBUG("Reset: {}, Input FT: {}, Opti FT: {}, Set FT: {} ms, Opti Id: {}, Reflex Id: {}", _reset[fIndex],
+              _ftDelta[fIndex], state.lastFGFrameTime, constData.frameRenderTime, _frameCount,
               State::Instance().reflexFrameId);
 
     auto frameId = static_cast<uint32_t>(willDispatchFrame);
