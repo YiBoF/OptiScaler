@@ -4508,7 +4508,7 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
     }
     // WIP
     // Select the number of interpolation frames in native XEFG input
-    else if (XeMFGHooks::GetxefgContext() && XeMFGHooks::GetMaxInterpolationCount() > 1)
+    else if (ScopedCard::Shows("fg_xefg") && XeMFGHooks::GetxefgContext() && XeMFGHooks::GetMaxInterpolationCount() > 1)
     {
 
         ImGui::SeparatorText("Frame Generation (XeFG - Native)");
@@ -4521,9 +4521,9 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
         const int currentSet = Config::Instance()->FGXeFGInterpolationCount.value_or(0);
         const int currentCount = XeMFGHooks::GetGameInterpolationCount();
 
-        intModes.emplace_back(std::format("Auto {}X", currentCount + 1));
+        intModes.push_back(std::format("Auto {}X", currentCount + 1));
         for (uint32_t i = 2; i < maxInterpolationCount + 2; i++)
-            intModes.emplace_back(std::format("{}X", i));
+            intModes.push_back(std::format("{}X", i));
 
         ImGui::PushItemWidth(95.0f * menuResScale);
 
